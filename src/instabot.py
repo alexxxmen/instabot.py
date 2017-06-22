@@ -24,10 +24,6 @@ from config import (LOG_TO, LOGGER, TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, AD
 if not os.path.exists(LOG_TO):
     os.mkdir(LOG_TO)
 
-fh = logging.FileHandler(os.path.join(LOG_TO, LOGGER.get('file')))
-fh.setLevel(LOGGER.get('level'))
-fh.setFormatter(LOGGER.get('formatter'))
-
 
 class Logger(object):
     def __init__(self, logger_name, file_handler):
@@ -114,9 +110,6 @@ class InstaBot:
     self_following = 0
     self_follower = 0
 
-    # Log setting.
-    log = Logger('IBot', fh)
-
     # Other.
     user_id = 0
     media_by_tag = 0
@@ -149,6 +142,12 @@ class InstaBot:
                  tag_blacklist=[],
                  unwanted_username_list=[],
                  unfollow_whitelist=[]):
+
+        # Log setting.
+        fh = logging.FileHandler(os.path.join(LOG_TO, LOGGER.get('file') % login))
+        fh.setLevel(LOGGER.get('level'))
+        fh.setFormatter(LOGGER.get('formatter'))
+        self.log = Logger('IBot', fh)
 
         self.bot_start = datetime.datetime.now()
         self.unfollow_break_min = unfollow_break_min
@@ -277,35 +276,38 @@ class InstaBot:
         self.csrftoken = login.cookies['csrftoken']
         time.sleep(5 * random.random())
 
-        if login.status_code == 200:
-            r = self._send_get_request('https://www.instagram.com/')
-            finder = r.text.find(self.user_login)
-            if finder != -1:
-                ui = UserInfo()
-                self.user_id = ui.get_user_id_by_login(self.user_login)
-                self.login_status = True
-                log_string = '%s login success!' % (self.user_login)
-                self.log.debug(log_string)
-            else:
-                self.login_status = False
-                self.log.debug('Login error! Check your login data!')
-        else:
-            self.log.debug('Login error! Connection error!')
+        if login.status_code != 200:
+            self.log.warning('Login error! Connection error!')
+            raise Exception("Login error! Connection error!")
+
+        r = self._send_get_request('https://www.instagram.com/')
+        finder = r.text.find(self.user_login)
+
+        if finder == -1:
+            self.login_status = False
+            self.log.debug('Login error! Check your login data!')
+            raise Exception("Login error! Check your login data!")
+
+        ui = UserInfo()
+        self.user_id = ui.get_user_id_by_login(self.user_login)
+        self.login_status = True
+        log_string = '%s login success!' % self.user_login
+        self.log.debug(log_string)
 
     def logout(self):
         now_time = datetime.datetime.now()
         log_string = 'Logout: likes - %i, follow - %i, unfollow - %i, comments - %i.' % \
                      (self.like_counter, self.follow_counter,
                       self.unfollow_counter, self.comments_counter)
-        self.log.debug(log_string)
-        work_time = datetime.datetime.now() - self.bot_start
+        self.log.info(log_string)
+        work_time = now_time - self.bot_start
         log_string = 'Bot work time: %s' % (work_time)
-        self.log.debug(log_string)
+        self.log.info(log_string)
 
         try:
             logout_post = {'csrfmiddlewaretoken': self.csrftoken}
             logout = self._send_post_request(self.url_logout, data=logout_post)
-            self.log.debug("Logout success!")
+            self.log.info("Logout success!")
             self.login_status = False
         except:
             self.log.debug("Logout error!")
