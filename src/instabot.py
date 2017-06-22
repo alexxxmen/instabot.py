@@ -330,6 +330,10 @@ class InstaBot:
         # Logout
         if (self.login_status):
             self.logout()
+
+        msg = "IBot '%s' was stopped. " % self.user_login
+        for t_id in telegram_ids:
+            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
         exit(0)
 
     def get_media_id_by_tag(self, tag):
