@@ -116,6 +116,7 @@ class InstaBot:
     media_on_feed = []
     media_by_user = []
     login_status = False
+    is_inform_telegram = False
 
     # For new_auto_mod
     run_auto_mod = True
@@ -278,6 +279,10 @@ class InstaBot:
 
         if login.status_code != 200:
             self.log.warning('Login error! Connection error!')
+            if not self.is_inform_telegram:
+                msg = "IBot notification. '%s' Connection error. " % self.user_login
+                for t_id in telegram_ids:
+                    self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
             raise Exception("Login error! Connection error!")
 
         r = self._send_get_request('https://www.instagram.com/')
@@ -286,6 +291,11 @@ class InstaBot:
         if finder == -1:
             self.login_status = False
             self.log.debug('Login error! Check your login data!')
+            if not self.is_inform_telegram:
+                msg = "IBot notification. '%s' login error. " % self.user_login
+                for t_id in telegram_ids:
+                    self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
+
             raise Exception("Login error! Check your login data!")
 
         ui = UserInfo()
@@ -293,6 +303,11 @@ class InstaBot:
         self.login_status = True
         log_string = '%s login success!' % self.user_login
         self.log.debug(log_string)
+
+        if not self.is_inform_telegram:
+            msg = "IBot '%s' was started at %s. " % (self.user_login, str(datetime.datetime.now()))
+            for t_id in telegram_ids:
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
 
     def logout(self):
         now_time = datetime.datetime.now()
@@ -331,9 +346,12 @@ class InstaBot:
         if (self.login_status):
             self.logout()
 
-        msg = "IBot '%s' was stopped. " % self.user_login
-        for t_id in telegram_ids:
-            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
+        if not self.is_inform_telegram:
+            msg = "IBot '%s' was stopped. " % self.user_login
+            for t_id in telegram_ids:
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
+            self.is_inform_telegram = True
+
         exit(0)
 
     def get_media_id_by_tag(self, tag):
@@ -864,6 +882,7 @@ class InstaBot:
         if response.status_code == 400:
             self.log.warning("Error. Response status code=%s." % response.status_code)
             self.error_400 += 1
+            time.sleep(random.randint(57, 93))
 
             if self.error_400 >= self.max_error_400:
                 self.log.warning("Max error 400 was received. Exit...")
