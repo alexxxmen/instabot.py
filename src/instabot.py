@@ -74,12 +74,15 @@ class InstaBot:
 
     # If instagram ban you - query return 400 error.
     error_400 = 0
-    # If you have 3 400 error in row - looks like you banned.
+    error_403 = 0
+    # If you have 3 400, 403 error in row - looks like you banned.
     error_400_to_ban = 3
+    error_403_to_ban = 3
     # If InstaBot think you are banned - going to sleep.
     ban_sleep_time = 2 * 60 * 60
     # max of error_400 for stop bot
     max_error_400 = 5
+    max_error_403 = 5
 
     # All counter.
     bot_mode = 0
@@ -241,7 +244,7 @@ class InstaBot:
                 time.sleep(5 * random.random())
 
     def login(self):
-        log_string = 'Trying to login as %s...\n' % (self.user_login)
+        log_string = 'Trying to login as %s...\n' % self.user_login
         self.log.debug(log_string)
         self.s.cookies.update({
             'sessionid': '',
@@ -281,8 +284,7 @@ class InstaBot:
             self.log.warning('Login error! Connection error!')
             if not self.is_inform_telegram:
                 msg = "IBot notification. '%s' Connection error. " % self.user_login
-                for t_id in telegram_ids:
-                    self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
             raise Exception("Login error! Connection error!")
 
         r = self._send_get_request('https://www.instagram.com/')
@@ -293,9 +295,7 @@ class InstaBot:
             self.log.debug('Login error! Check your login data!')
             if not self.is_inform_telegram:
                 msg = "IBot notification. '%s' login error. " % self.user_login
-                for t_id in telegram_ids:
-                    self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
-
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
             raise Exception("Login error! Check your login data!")
 
         ui = UserInfo()
@@ -306,8 +306,7 @@ class InstaBot:
 
         if not self.is_inform_telegram:
             msg = "IBot '%s' was started at %s. " % (self.user_login, str(datetime.datetime.now()))
-            for t_id in telegram_ids:
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
+            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
 
     def logout(self):
         now_time = datetime.datetime.now()
@@ -324,8 +323,8 @@ class InstaBot:
             logout = self._send_post_request(self.url_logout, data=logout_post)
             self.log.info("Logout success!")
             self.login_status = False
-        except:
-            self.log.debug("Logout error!")
+        except Exception as ex:
+            self.log.exception("Error during logout")
 
     def cleanup(self, *_):
         # Unfollow all bot follow
@@ -348,8 +347,7 @@ class InstaBot:
 
         if not self.is_inform_telegram:
             msg = "IBot '%s' was stopped. " % self.user_login
-            for t_id in telegram_ids:
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
+            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
             self.is_inform_telegram = True
 
         exit(0)
@@ -367,9 +365,9 @@ class InstaBot:
                     all_data = json.loads(r.text)
 
                     self.media_by_tag = list(all_data['tag']['media']['nodes'])
-                except:
+                except Exception as ex:
+                    self.log.exception("Except on get_media!")
                     self.media_by_tag = []
-                    self.log.debug("Except on get_media!")
             else:
                 return 0
 
@@ -439,9 +437,8 @@ class InstaBot:
                                 "Not liking media with blacklisted tag(s): "
                                 + matching_tags)
                             return False
-                    except:
-                        self.log.debug(
-                            "Couldn't find caption - not liking")
+                    except Exception as ex:
+                        self.log.exception("Couldn't find caption - not liking")
                         return False
 
                     log_string = "Trying to like media: %s" % \
@@ -472,7 +469,6 @@ class InstaBot:
             else:
                 return False
 
-
     def like(self, media_id):
         """ Send http request to like media by ID """
         if self.login_status:
@@ -480,8 +476,8 @@ class InstaBot:
             try:
                 like = self._send_post_request(url_likes)
                 last_liked_media_id = media_id
-            except:
-                self.log.debug("Except on like!")
+            except Exception as ex:
+                self.log.exception("Except on like!")
                 like = 0
             return like
 
@@ -491,8 +487,8 @@ class InstaBot:
             url_unlike = self.url_unlike % (media_id)
             try:
                 unlike = self._send_post_request(url_unlike)
-            except:
-                self.log.debug("Except on unlike!")
+            except Exception as ex:
+                self.log.exception("Except on unlike!")
                 unlike = 0
             return unlike
 
@@ -509,8 +505,9 @@ class InstaBot:
                                                         self.comments_counter)
                     self.log.debug(log_string)
                 return comment
-            except:
-                self.log.debug("Except on comment!")
+            except Exception as ex:
+                self.log.exception("Except on comment!")
+
         return False
 
     def follow(self, user_id):
@@ -525,8 +522,8 @@ class InstaBot:
                                                         self.follow_counter)
                     self.log.debug(log_string)
                 return follow
-            except:
-                self.log.debug("Except on follow!")
+            except Exception as ex:
+                self.log.exception("Except on follow!")
         return False
 
     def unfollow(self, user_id):
@@ -541,8 +538,8 @@ class InstaBot:
                                                         self.unfollow_counter)
                     self.log.debug(log_string)
                 return unfollow
-            except:
-                self.log.debug("Exept on unfollow!")
+            except Exception as ex:
+                self.log.exception("Exept on unfollow!")
         return False
 
     def unfollow_on_cleanup(self, user_id):
@@ -573,9 +570,9 @@ class InstaBot:
                         time.sleep(300)
                     return False
                 return unfollow
-            except:
-                log_string = "Except on unfollow... Looks like a network error"
-                self.log.debug(log_string)
+            except Exception as ex:
+                self.log.exception("Except on unfollow... Looks like a network error")
+
         return False
 
     def auto_mod(self):
@@ -598,19 +595,17 @@ class InstaBot:
             # ------------------- Like -------------------
             self.new_auto_mod_like()
             # ------------------- Follow -------------------
-            self.new_auto_mod_follow()
+            # self.new_auto_mod_follow()
             # ------------------- Unfollow -------------------
-            self.new_auto_mod_unfollow()
+            # self.new_auto_mod_unfollow()
             # ------------------- Comment -------------------
-            self.new_auto_mod_comments()
+            # self.new_auto_mod_comments()
             # Bot iteration in 3 sec
             time.sleep(3)
             # print("Tic!")
 
         msg = "IBot '%s' was stopped. " % self.user_login
-        for t_id in telegram_ids:
-            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, t_id, msg)
-
+        self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
         raise Exception("Something went wrong. IBot stopping...")
 
     def new_auto_mod_like(self):
@@ -806,7 +801,7 @@ class InstaBot:
                             self.log.debug('   >>>You are NOT following this account')
                         i += 1
 
-                except:
+                except Exception as ex:
                     self.log.exception("Error during get_info")
                     media_on_feed = []
                     time.sleep(20)
@@ -815,11 +810,13 @@ class InstaBot:
                 return 0
 
             if self.is_selebgram is not False or self.is_fake_account is not False or self.is_active_user is not True or self.is_follower is not True:
-                self.log.debug(current_user)
+                self.log.debug("Need to unfollow=%s(%s)" % (current_user, current_id))
                 self.unfollow(current_id)
+                time.sleep(random.randint(35, 105))
                 try:
                     del self.media_on_feed[chooser]
-                except:
+                except Exception as ex:
+                    self.log.exception(ex.message)
                     self.media_on_feed = []
             self.media_on_feed = []
 
@@ -841,9 +838,9 @@ class InstaBot:
                     log_string = "Media in recent feed = %i" % (
                         len(self.media_on_feed))
                     self.log.debug(log_string)
-                except:
+                except Exception as ex:
+                    self.log.exception("Error during get media id by recent feed")
                     self.media_on_feed = []
-                    self.log.debug("Except on get_media!")
                     time.sleep(20)
                     return 0
             else:
@@ -873,10 +870,10 @@ class InstaBot:
             raise
         return self._check_response(response)
 
-    def _send_telegram_message(self, url, token, id, text):
-        url = _make_url(url, token, id, text)
-        response = requests.get(url)
-        return response
+    def _send_telegram_message(self, url, token, text):
+        for t_id in telegram_ids:
+            url = _make_url(url, token, t_id, text)
+            requests.get(url)
 
     def _check_response(self, response):
         if response.status_code == 400:
@@ -886,17 +883,45 @@ class InstaBot:
 
             if self.error_400 >= self.max_error_400:
                 self.log.warning("Max error 400 was received. Exit...")
+                msg = "Max error 400 was received. Exit '%s'..." % self.user_login
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
                 self._force_exit()
 
             if self.error_400 >= self.error_400_to_ban:
                 # Look like you banned!
                 self.log.warning("Attention '%s' response status_code 400" % self.error_400)
                 self.log.warning("Going to sleep=%s" % self.ban_sleep_time)
+                msg = "Bot '%s' Attention '%s' response status_code 400. Going to sleep=%s." % \
+                      (self.user_login, self.error_400, self.ban_sleep_time)
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
                 time.sleep(self.ban_sleep_time)
 
-            raise Request400Exception("Error. Request status code=400, count=%s" % self.error_400)
+            raise Request400Exception("Error. Response status code=400, count=%s" % self.error_400)
+
+        if response.status_code == 403:
+            self.log.warning("Error. Response status code=%s." % response.status_code)
+            self.error_403 += 1
+            time.sleep(random.randint(57, 93))
+
+            if self.error_403 >= self.max_error_403:
+                self.log.warning("Max error 403 was received. Exit...")
+                msg = "Max error 403 was received. Exit '%s'..." % self.user_login
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._force_exit()
+
+            if self.error_403 >= self.error_403_to_ban:
+                # Look like you banned!
+                self.log.warning("Attention '%s' response status_code 403" % self.error_400)
+                self.log.warning("Going to sleep=%s" % self.ban_sleep_time)
+                msg = "Bot '%s' Attention '%s' response status_code 403. Going to sleep=%s." % \
+                      (self.user_login, self.error_403, self.ban_sleep_time)
+                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                time.sleep(self.ban_sleep_time)
+
+            raise Request403Exception("Error. Response status code=403, count=%s" % self.error_403)
 
         self.error_400 = 0
+        self.error_403 = 0
         return response
 
     def _force_exit(self):
@@ -910,3 +935,14 @@ def _make_url(url, token, id, text):
 
 class Request400Exception(Exception):
     pass
+
+
+class Request403Exception(Exception):
+    pass
+
+
+class ResponseMock(object):
+    """Testing stub"""
+    status_code = 200
+    text = "Ok"
+    headers = {'some': 'headers'}
