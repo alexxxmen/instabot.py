@@ -284,7 +284,7 @@ class InstaBot:
             self.log.warning('Login error! Connection error!')
             if not self.is_inform_telegram:
                 msg = "IBot notification. '%s' Connection error. " % self.user_login
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._send_telegram_message(msg)
             raise Exception("Login error! Connection error!")
 
         r = self._send_get_request('https://www.instagram.com/')
@@ -295,7 +295,7 @@ class InstaBot:
             self.log.debug('Login error! Check your login data!')
             if not self.is_inform_telegram:
                 msg = "IBot notification. '%s' login error. " % self.user_login
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._send_telegram_message(msg)
             raise Exception("Login error! Check your login data!")
 
         ui = UserInfo()
@@ -306,7 +306,7 @@ class InstaBot:
 
         if not self.is_inform_telegram:
             msg = "IBot '%s' was started at %s. " % (self.user_login, str(datetime.datetime.now()))
-            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+            self._send_telegram_message(msg)
 
     def logout(self):
         now_time = datetime.datetime.now()
@@ -347,7 +347,7 @@ class InstaBot:
 
         if not self.is_inform_telegram:
             msg = "IBot '%s' was stopped. " % self.user_login
-            self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+            self._send_telegram_message(msg)
             self.is_inform_telegram = True
 
         exit(0)
@@ -605,7 +605,7 @@ class InstaBot:
             # print("Tic!")
 
         msg = "IBot '%s' was stopped. " % self.user_login
-        self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+        self._send_telegram_message(msg)
         raise Exception("Something went wrong. IBot stopping...")
 
     def new_auto_mod_like(self):
@@ -870,9 +870,10 @@ class InstaBot:
             raise
         return self._check_response(response)
 
-    def _send_telegram_message(self, url, token, text):
+    def _send_telegram_message(self, text):
         for t_id in telegram_ids:
-            url = _make_url(url, token, t_id, text)
+            url = "%s%s/sendMessage?%s" % (TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN,
+                                           urllib.urlencode({'chat_id': t_id, 'text': str(text)}))
             requests.get(url)
 
     def _check_response(self, response):
@@ -884,7 +885,7 @@ class InstaBot:
             if self.error_400 >= self.max_error_400:
                 self.log.warning("Max error 400 was received. Exit...")
                 msg = "Max error 400 was received. Exit '%s'..." % self.user_login
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._send_telegram_message(msg)
                 self._force_exit()
 
             if self.error_400 >= self.error_400_to_ban:
@@ -893,7 +894,7 @@ class InstaBot:
                 self.log.warning("Going to sleep=%s" % self.ban_sleep_time)
                 msg = "Bot '%s' Attention '%s' response status_code 400. Going to sleep=%s." % \
                       (self.user_login, self.error_400, self.ban_sleep_time)
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._send_telegram_message(msg)
                 time.sleep(self.ban_sleep_time)
 
             raise Request400Exception("Error. Response status code=400, count=%s" % self.error_400)
@@ -906,7 +907,7 @@ class InstaBot:
             if self.error_403 >= self.max_error_403:
                 self.log.warning("Max error 403 was received. Exit...")
                 msg = "Max error 403 was received. Exit '%s'..." % self.user_login
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._send_telegram_message(msg)
                 self._force_exit()
 
             if self.error_403 >= self.error_403_to_ban:
@@ -915,7 +916,7 @@ class InstaBot:
                 self.log.warning("Going to sleep=%s" % self.ban_sleep_time)
                 msg = "Bot '%s' Attention '%s' response status_code 403. Going to sleep=%s." % \
                       (self.user_login, self.error_403, self.ban_sleep_time)
-                self._send_telegram_message(TELEGRAM_BOT_API_URL, TELEGRAM_BOT_TOKEN, msg)
+                self._send_telegram_message(msg)
                 time.sleep(self.ban_sleep_time)
 
             raise Request403Exception("Error. Response status code=403, count=%s" % self.error_403)
@@ -927,10 +928,6 @@ class InstaBot:
     def _force_exit(self):
         self.run_auto_mod = False
         exit(0)
-
-
-def _make_url(url, token, id, text):
-    return "%s%s/sendMessage?" % (url, token) + urllib.urlencode({'chat_id': id, 'text': str(text)})
 
 
 class Request400Exception(Exception):
