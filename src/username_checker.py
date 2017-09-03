@@ -28,4 +28,4 @@ def username_checker(self):
         chooser += 1
     log_string = "\nSize of user info list : %i Size of ex user list : %i \n" % (
         len(self.user_info_list), len(self.ex_user_list))
-    self.write_log(log_string)
+    self.log.debug(log_string)

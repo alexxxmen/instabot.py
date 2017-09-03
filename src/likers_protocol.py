@@ -13,7 +13,7 @@ def likers_protocol(self):
         self.current_index = random.randint(0, len(self.media_by_user) - 1)
         log_string = "Current Index = %i of %i medias" % (
             self.current_index, len(self.media_by_user))
-        self.write_log(log_string)
+        self.log.debug(log_string)
 
         if self.media_by_user[self.
                               current_index]["likes"]["count"] >= 10 and self.media_by_user[self.

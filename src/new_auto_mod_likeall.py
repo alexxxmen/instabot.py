@@ -5,22 +5,22 @@ def new_like_all_exist_media(self):
     if l_c <= self.media_max_like and l_c >= self.media_min_like:
         log_string = "Trying to like media: %s" %\
                       (self.media_by_user[i]['id'])
-        self.write_log(log_string)
+        self.log.debug(log_string)
         like = self.like(self.media_by_user[i]['id'])
         if like != 0:
             if like.status_code == 200:
                 log_string = "Liked: %s. Likes: #%i." %\
                               (self.media_by_user[i]['id'],
                                self.media_by_user[i]['likes']['count'])
-                self.write_log(log_string)
+                self.log.debug(log_string)
             elif like.status_code == 400:
                 log_string = "Not liked: %i" \
                               % (like.status_code)
-                self.write_log(log_string)
+                self.log.debug(log_string)
             else:
                 log_string = "Not liked: %i" \
                               % (like.status_code)
-                self.write_log(log_string)
+                self.log.debug(log_string)
                 return False
         else:
             return False

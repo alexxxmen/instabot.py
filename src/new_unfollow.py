@@ -11,8 +11,8 @@ def new_unfollow(self, user_id, user_name):
             self.unfollow_counter += 1
             log_string = "Unfollow: %s #%i." % (user_name,
                                                 self.unfollow_counter)
-            self.write_log(log_string)
+            self.log.debug(log_string)
         return unfollow
     except:
-        self.write_log("Exept on unfollow!")
+        self.log.debug("Exept on unfollow!")
         return False
