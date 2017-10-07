@@ -368,9 +368,10 @@ class InstaBot:
                         media_shortcode = media['code']
                         r = self._send_get_request(self.url_media_detail % media_shortcode)
                         media_details = r.json()
-                        owner_username = media_details['graph']['shortcode_media']['owner']['username']
+                        owner_username = media_details['graphql']['shortcode_media']['owner']['username']
                         if not self.is_non_bussiness_user(owner_username):
-                            self.media_by_tag.pop(media)
+
+                            self.media_by_tag.remove(media)
 
                 except Exception:
                     self.log.exception("Except on get_media!")
@@ -381,6 +382,7 @@ class InstaBot:
     def is_non_bussiness_user(self, username):
         for name in self.unwanted_username_list:
             if name in username:
+                self.log.debug("Media with owner '%s' have unwanted part '%s'" % (username, name))
                 return False
         return True
 
